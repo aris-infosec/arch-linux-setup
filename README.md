@@ -1363,4 +1363,4 @@ After completing this guide, you will have:
 
 ---
 
-*Guide maintained by [your GitHub username]. Contributions and corrections welcome via pull request.*
+Contributions and corrections welcome via pull request.*
