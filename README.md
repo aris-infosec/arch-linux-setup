@@ -1,7 +1,5 @@
-# arch-linux-setup
-Complete Arch Linux installation guide with Hyprland, Waybar, and full desktop setup
-
 # Arch Linux — Complete Installation & Hyprland Setup Guide
+Complete Arch Linux installation guide with Hyprland, Waybar, and full desktop setup
 
 > **Target audience:** Users who want a clean, minimal, and fully customized Arch Linux installation with the Hyprland Wayland compositor and a polished Waybar status bar.
 >
