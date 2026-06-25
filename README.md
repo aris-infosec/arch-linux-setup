@@ -9,7 +9,7 @@ Complete Arch Linux installation guide with Hyprland, Waybar, and full desktop s
 
 ## Table of Contents
 
-1. [Pre-Installation Checklist](#1-pre-installation-checklist)
+1. [Pre-Installation Checklist & ISO Verification](#1-pre-installation-checklist)
 2. [Boot into Live Environment](#2-boot-into-live-environment)
 3. [Connect to the Internet](#3-connect-to-the-internet)
 4. [Optional: Remote Setup via SSH](#4-optional-remote-setup-via-ssh)
@@ -45,6 +45,7 @@ Complete Arch Linux installation guide with Hyprland, Waybar, and full desktop s
 Before you begin, make sure you have:
 
 - [ ] Downloaded the latest Arch Linux ISO from [archlinux.org](https://archlinux.org/download/)
+- [ ] Verified the ISO integrity and authenticity (see below)
 - [ ] Written the ISO to a USB drive (use `dd`, Rufus, or Balena Etcher)
 - [ ] Backed up all important data on the target machine
 - [ ] A working internet connection (Ethernet is easiest; Wi-Fi instructions are included)
@@ -52,6 +53,34 @@ Before you begin, make sure you have:
 - [ ] Noted your drive identifier (usually `/dev/nvme0n1` for NVMe or `/dev/sda` for SATA)
 
 > **Note:** All commands in this guide assume an NVMe drive at `/dev/nvme0n1`. Substitute with your actual drive name where needed.
+
+### Verify ISO Integrity (Recommended)
+
+From the Arch Linux download page, also download:
+- The `sha256sums.txt` file
+- The `.sig` PGP signature file
+
+**Step 1 — Verify the checksum** (confirms the file downloaded without corruption):
+
+```bash
+# On Linux/macOS (coreutils required; on macOS: brew install coreutils)
+sha256sum -c sha256sums.txt
+# Expected output: archlinux-*.iso: OK
+```
+
+**Step 2 — Verify the PGP signature** (confirms the ISO is authentic and signed by Arch):
+
+```bash
+# Install GnuPG if needed (macOS: brew install gnupg)
+# Download the signing key (copy exact command from the Arch download page)
+gpg --keyserver-options auto-key-retrieve --verify archlinux-*.iso.sig
+
+# What you want to see:
+# Good signature from "Pierre Schmitz <pierre@archlinux.org>"
+# (The WARNING about the key not being certified is normal — ignore it)
+```
+
+> If the checksum or signature fails, delete the ISO and re-download from a different mirror, then verify again before flashing.
 
 ---
 
@@ -65,6 +94,12 @@ You will land at a root shell prompt:
 
 ```
 root@archiso ~ #
+```
+
+**Tip: Increase the font size** if the text is too small on your screen:
+
+```bash
+setfont ter-132b
 ```
 
 **Prompt explanation:**
@@ -202,10 +237,12 @@ Identify your target drive (e.g. `/dev/nvme0n1`).
 |---|---|---|---|
 | `/dev/nvme0n1p1` | 1 GB | EFI System | `/boot` |
 | `/dev/nvme0n1p2` | 75 GB | Linux filesystem | `/` (root) |
-| `/dev/nvme0n1p3` | 8 GB | Linux swap | swap |
+| `/dev/nvme0n1p3` | 4 GB | Linux swap | swap |
 | `/dev/nvme0n1p4` | Remaining | Linux filesystem | `/home` |
 
-> Adjust sizes to match your total disk capacity.
+> **Swap size:** The Arch Wiki recommends **4 GB** as a sensible default for modern systems. The old rule of "2× your RAM" is outdated. Adjust up if you regularly run memory-heavy workloads or use hibernation.
+>
+> **Root size:** The Arch Wiki recommends at least 32 GB. 75 GB gives comfortable headroom for packages and larger tools. Getting this right now is easier than resizing later.
 
 ### Partition with cfdisk
 
@@ -402,8 +439,22 @@ locale-gen
 ### Set the system language
 
 ```bash
+# Option A — quick one-liner
 echo "LANG=de_DE.UTF-8" > /etc/locale.conf
+
+# Option B — explicit editor method (same result)
+vim /etc/locale.conf
+# Press i, type: LANG=de_DE.UTF-8
+# Press Esc, then :wq
+
 export LANG=de_DE.UTF-8
+```
+
+Verify it was set correctly:
+
+```bash
+cat /etc/locale.conf
+# Should output: LANG=de_DE.UTF-8
 ```
 
 > For English, use `en_US.UTF-8` instead.
@@ -693,7 +744,12 @@ yay -S nwg-look gnome-themes-extra qt6ct
 
 # Chromium browser
 yay -S chromium
+
+# Waybar click-action tools (needed for module on-click actions)
+yay -S bluetui btop htop nm-connection-editor
 ```
+
+> **`playerctld`** is included in the `playerctl` package. It acts as a media daemon that tracks the most recently active media player — important for the Waybar media widgets to work correctly across multiple players. It is started via autostart in Hyprland (covered in section 28).
 
 **App reference:**
 
@@ -718,7 +774,16 @@ The main config file is at:
 ~/.config/hypr/hyprland.conf
 ```
 
-If it doesn't exist yet, Hyprland generates a default on first launch. Edit it:
+> **Note:** Hyprland *should* generate a default config on first launch, but sometimes it doesn't. If you land in a black screen or get errors about a missing config, you need to manually create it. Get the official default from the [Hyprland GitHub](https://github.com/hyprwm/Hyprland) and paste it in:
+
+```bash
+mkdir -p ~/.config/hypr
+vim ~/.config/hypr/hyprland.conf
+# Paste the default config, press Esc, then :wq
+# Exit Hyprland with Super+M, then log back in
+```
+
+Edit it:
 
 ```bash
 nvim ~/.config/hypr/hyprland.conf
@@ -872,6 +937,33 @@ env = QT_QPA_PLATFORMTHEME,qt6ct
 mkdir -p ~/.config/rofi
 rofi -dump-config > ~/.config/rofi/config.rasi
 ```
+
+### Install Rofi themes (Spotlight Dark)
+
+The default Rofi look is plain. Install a proper theme set:
+
+```bash
+# Make sure git is installed
+sudo pacman -S git
+
+# Clone the newt theme repository (link from the Rofi themes community)
+git clone https://github.com/newt-sc/a-newt-rofi-theme.git
+cd a-newt-rofi-theme
+
+# Create the themes directory and copy the spotlight themes
+mkdir -p ~/.local/share/rofi/themes
+cp ./themes/spotlight* ~/.local/share/rofi/themes/
+cd ~
+```
+
+Apply the theme:
+
+1. Open the Rofi runner: `Super + Shift + Space`
+2. Type `theme-selector` and press Enter
+3. Use arrow keys to browse — select `spotlight-dark`
+4. Press `Alt + A` to accept
+
+Now `Super + Space` will open Rofi with the dark spotlight theme.
 
 ---
 
@@ -1075,9 +1167,27 @@ window#waybar {
     color: @urgent;
 }
 
+#volume {
+    padding: 5px 10px;
+    margin: 5px 3px;
+    border-radius: 8px;
+    background: @dark-8;
+}
+
+#pulseaudio-slider {
+    padding: 0;
+    margin: 0;
+    margin-left: 8px;
+}
+
 #pulseaudio-slider slider {
     min-height: 0;
     min-width: 0;
+}
+
+#media {
+    color: @highlight;
+    margin-left: 80px;
 }
 
 #custom-media-now-playing {
